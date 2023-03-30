@@ -1,3 +1,4 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 
 //Connect to Database
@@ -25,18 +26,13 @@ const saveURL = (short, org, done) => {
         shorturl: short.toString(),
         original_url: org
     });
-    url.save((err, data) => {
-        if (err) return console.log(err);
-        done(null, data);
-    });
+    url.save();
 };
 
 //Query a record/document
-const getURL = (short, done) => {
-    URL.findOne({shorturl: short}, (err, data) => {
-        if (err) return {"error": "no url exists for this input"};
-        done(null, data);
-    })
+const getURL = async(short, done) => {
+    let doc = await URL.findOne({shorturl: short});
+    return doc;
 }
 
 //Export the function;

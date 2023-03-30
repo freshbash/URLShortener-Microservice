@@ -4,11 +4,11 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const dns = require('dns');
 const app = express();
-let currentHash = -1;
 
+//Naive hash function using an evironment variable
 function hash() {
-  currentHash++;
-  return currentHash;
+  process.env.CURRENT_HASH++;
+  return process.env.CURRENT_HASH;
 }
 
 
@@ -36,29 +36,38 @@ app.listen(port, function() {
 
 // API endpoint for creating a short url
 app.route('/api/shorturl').post((req, res) => {
+  //Create the hash
   const shortURL = hash();
+  //Get the user inputted url
   const org_url = req.body.url;
   //Check the validity of the input url
-  dns.lookup(org_url, (err) => {
+  const valid = dns.lookup(org_url, (err) => {
     if (err) {
-      res.json({"error": "invalid url"});
+      return false;
     }
+    return true
   });
+  if (!valid) {
+    res.json({"error": "invalid url"});
+  }
   //Add the original url and shortURL into the db
   require('./src/database.js').saveURL(shortURL, org_url);
   res.json({"original_url": org_url, "short_url": shortURL});
 })
 
 // API endpoint for accessing the original url with the short url
-app.route('/api/shorturl/:shorturl').get((req, res) => {
+app.route('/api/shorturl/:shorturl').get(async (req, res) => {
+  //Get the user input
   const shorturl = req.params.shorturl;
   //Use shorturl to query the database to get the appropriate original url.
-  const queryResult = require('./src/database.js').getURL(shorturl);
+  const queryResult = await require('./src/database.js').getURL(shorturl);
   //Check if a record was found or not
-  if ("error" in queryResult) {
+  if (queryResult === null) {
     res.json({"error": "No url found for the given input"});
   }
-  //Visit the website with the url
-  const org = queryResult.original_url;
-  res.redirect(org);
-})
+  else {
+    //Visit the website with the url
+    const org = queryResult.original_url;
+    res.redirect(org);
+  }
+});
