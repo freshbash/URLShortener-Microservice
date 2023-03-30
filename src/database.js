@@ -20,7 +20,7 @@ let URL = mongoose.model("URL", urlSchema);
 
 
 //Create and save a record
-export const saveURL = (short, org, done) => {
+const saveURL = (short, org, done) => {
     const url = new URL({
         shorturl: short.toString(),
         original_url: org
@@ -32,7 +32,7 @@ export const saveURL = (short, org, done) => {
 };
 
 //Query a record/document
-export const getURL = (short, done) => {
+const getURL = (short, done) => {
     URL.findOne({shorturl: short}, (err, data) => {
         if (err) return {"error": "no url exists for this input"};
         done(null, data);
