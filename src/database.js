@@ -38,3 +38,7 @@ export const getURL = (short, done) => {
         done(null, data);
     })
 }
+
+//Export the function;
+exports.saveURL = saveURL;
+exports.getURL = getURL;
