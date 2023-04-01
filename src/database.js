@@ -29,6 +29,11 @@ const saveURL = (short, org, done) => {
     url.save();
 };
 
+//Check if a url exist in the database
+const checkURL = (url) => {
+    return URL.findOne({original_url: url});
+}
+
 //Query a record/document
 const getURL = async(short, done) => {
     let doc = await URL.findOne({shorturl: short});
@@ -37,4 +42,5 @@ const getURL = async(short, done) => {
 
 //Export the function;
 exports.saveURL = saveURL;
+exports.checkURL = checkURL;
 exports.getURL = getURL;

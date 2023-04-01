@@ -11,6 +11,19 @@ function hash() {
   return process.env.CURRENT_HASH;
 }
 
+//Function to check whether the user inputted url is valid
+async function verifyHostName(hostname) {
+  return new Promise((resolve, reject) => {
+    dns.lookup(hostname, (err, address, family) => {
+      if (err) {
+        reject(false);
+      }
+      else {
+        resolve(true);
+      }
+    })
+  });
+}
 
 // Basic Configuration
 const port = process.env.PORT || 3000;
@@ -31,29 +44,72 @@ app.get('/api/hello', function(req, res) {
 });
 
 app.listen(port, function() {
-  console.log(`Listening on port ${port}`);
+  console.log(`Listening on localhost:${port}`);
 });
 
 // API endpoint for creating a short url
-app.route('/api/shorturl').post((req, res) => {
+app.route('/api/shorturl').post(async(req, res) => {
   //Create the hash
   const shortURL = hash();
   //Get the user inputted url
   const org_url = req.body.url;
+
+  //Check if the url already exists in the database
+  const exists = await require('./src/database.js').checkURL(org_url);
+  if(exists) {
+    res.json({"original_url": exists.original_url, "short_url": exists.shorturl});
+    return;
+  }
+
   //Check the validity of the input url
-  const valid = dns.lookup(org_url, (err) => {
-    if (err) {
-      return false;
+
+  ////If the url does not have an http scheme at the beginning then serve the error json.
+  const regexForProtocol = /^https?:\/\//g;
+  const scheme = org_url.match(regexForProtocol);
+  if (scheme[0] !== "https://" && scheme[0] !== "http://") {
+    res.json({"error": "invalid url"});
+    return;
+  }
+
+  ////Get the authority from the url
+  //////Regex to match a host name
+  const authorityRegex = /^https?:\/\/.+\.[A-Za-z\.]+\/?/g;
+  //////Regex to match an IP address
+  const authorityRegexIP = /^https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/g;
+
+  const authority = org_url.match(authorityRegex);
+  const authorityIP = org_url.match(authorityRegexIP);
+  console.log({authority: authority, authorityIP: authorityIP});
+
+  //If the authority is a valid IP address then store the url and serve the JSON
+  if (authorityIP) {
+    require('./src/database.js').saveURL(shortURL, org_url);
+    res.json({"original_url": org_url, "short_url": shortURL});
+    return;
+  }
+
+  //If the authority is a valid host name then store the url and serve the JSON else serve error json.
+  let hostname = null;
+  if (authority) {
+    const authorityStartIndex = scheme[0].length === 8 ? 8 : 7;
+    if (authority[0][authority[0].length - 1] === '/') {
+      hostname = authority[0].slice(authorityStartIndex, authority[0].length - 1);
     }
-    return true
-  });
-  if (!valid) {
+    else {
+      hostname = authority[0].slice(authorityStartIndex);
+    }
+  }
+
+  let valid = await verifyHostName(hostname);
+  // console.log("Valid: ", valid);
+  if (valid) {
+    require('./src/database.js').saveURL(shortURL, org_url);
+    res.json({"original_url": org_url, "short_url": shortURL});
+  }
+  else {    
     res.json({"error": "invalid url"});
   }
-  //Add the original url and shortURL into the db
-  require('./src/database.js').saveURL(shortURL, org_url);
-  res.json({"original_url": org_url, "short_url": shortURL});
-})
+});
 
 // API endpoint for accessing the original url with the short url
 app.route('/api/shorturl/:shorturl').get(async (req, res) => {
