@@ -29,6 +29,11 @@ const saveURL = (short, org, done) => {
     url.save();
 };
 
+//Count the number of records in the database
+const countURLs = () => {
+    return URL.countDocuments();
+}
+
 //Check if a url exist in the database
 const checkURL = (url) => {
     return URL.findOne({original_url: url});
@@ -42,5 +47,6 @@ const getURL = async(short, done) => {
 
 //Export the function;
 exports.saveURL = saveURL;
+exports.countURLs = countURLs;
 exports.checkURL = checkURL;
 exports.getURL = getURL;

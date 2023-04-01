@@ -5,12 +5,6 @@ const bodyParser = require('body-parser');
 const dns = require('dns');
 const app = express();
 
-//Naive hash function using an evironment variable
-function hash() {
-  process.env.CURRENT_HASH++;
-  return process.env.CURRENT_HASH;
-}
-
 //Function to check whether the user inputted url is valid
 async function verifyHostName(hostname) {
   return new Promise((resolve, reject) => {
@@ -48,9 +42,8 @@ app.listen(port, function() {
 });
 
 // API endpoint for creating a short url
-app.route('/api/shorturl').post(async(req, res) => {
-  //Create the hash
-  const shortURL = hash();
+app.route('/api/shorturl').post(async(req, res) => {  
+
   //Get the user inputted url
   const org_url = req.body.url;
 
@@ -66,7 +59,7 @@ app.route('/api/shorturl').post(async(req, res) => {
   ////If the url does not have an http scheme at the beginning then serve the error json.
   const regexForProtocol = /^https?:\/\//g;
   const scheme = org_url.match(regexForProtocol);
-  if (scheme[0] !== "https://" && scheme[0] !== "http://") {
+  if (!regexForProtocol.test(org_url)) {
     res.json({"error": "invalid url"});
     return;
   }
@@ -80,6 +73,9 @@ app.route('/api/shorturl').post(async(req, res) => {
   const authority = org_url.match(authorityRegex);
   const authorityIP = org_url.match(authorityRegexIP);
   console.log({authority: authority, authorityIP: authorityIP});
+
+  //Create the hash
+  const shortURL = await require('./src/database.js').countURLs();
 
   //If the authority is a valid IP address then store the url and serve the JSON
   if (authorityIP) {
